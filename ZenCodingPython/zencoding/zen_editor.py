@@ -18,9 +18,54 @@ zen_editor.get_selection_range();
 '''
 
 import Npp
-import zen_core
 import re
+import sys
+import zencoding
+import zencoding.utils
 
+class ScintillaStr():
+	"""Class to emulate a string efficiently 
+	in Scintilla.  Zen Coding uses get_content() a lot,
+	when actually it only needs a small section of the 
+	content, so we emulate the slicing in this class.
+	If a real string is requested, we return getText()
+	In PythonScript 0.9.2.0 onwards, this could be 
+	getCharacterPointer()
+	"""
+	
+	def __init__(self):
+		self._editor = Npp.editor
+		
+	def __str__(self):
+		return self._editor.getText()
+
+	def __repr__(self):
+		return self._editor.getText()
+		
+	def __getitem__(self, i):
+		if i.__class__.__name__ == 'slice':
+			stop = i.stop
+			if stop == sys.maxint:
+				stop = -1
+			return self._editor.getTextRange(i.start, stop)
+		else:
+			return chr(self._editor.getCharAt(i))
+		
+	def __setitem__(self, i, c):
+		if i.__class__.__name__ == 'slice':
+			start, stop = (i.start, i.stop)
+		else:
+			start, stop = i, i
+		if stop > self._editor.getLength():
+			stop = self._editor.getLength()
+		
+		self._editor.setTarget(start, stop)
+		self._editor.replaceTarget(c)
+		
+		
+	def __len__(self):
+		return self._editor.getLength()
+		
 class ZenEditor():
 	def __init__(self):
 
@@ -80,6 +125,20 @@ class ZenEditor():
 		end = self._editor.lineFromPosition(self._editor.getSelectionEnd())
 		return start,end
 
+	def get_line_from_position(self, index):
+		"""
+		Returns the line contents from the file offset 
+		provided by index
+		@return: string of the line
+		@example
+		linecontent = zen_editor.get_line_from_position(32)
+		print(linecontent)
+		"""
+		return self._editor.getLine(self._editor.lineFromPosition(index))
+		
+	def char_at(self, index):
+		return chr(self._editor.getCharAt(index));
+		
 	def get_caret_pos(self):
 		""" Returns current caret position """
 		return self._editor.getCurrentPos()
@@ -98,7 +157,7 @@ class ZenEditor():
 		"""
 		return self._editor.getCurLine()
 
-	def replace_content(self, value, start=None, end=None):
+	def replace_content(self, value, start=None, end=None, no_indent=False, undo_name='Replace content'):
 		"""
 		Replace editor's content or it's part (from <code>start</code> to
 		<code>end</code> index). If <code>value</code> contains
@@ -122,16 +181,16 @@ class ZenEditor():
 		@type end: int
 		"""
 		
-		caret_placeholder = zen_core.get_caret_placeholder()
+		caret_placeholder = zencoding.utils.get_caret_placeholder()
 		realStart = start
 		caret_pos = -1
 		if realStart is None:
 			realStart = 0
 		
 		line_padding = self.padding_re.search(self._editor.getCurLine())
-		if line_padding:
+		if line_padding  and not no_indent:
 			line_padding = line_padding.group(1)
-			value = zen_core.pad_string(value, line_padding)
+			value = zencoding.utils.pad_string(value, line_padding)
 		
 		
 		new_pos = value.find(caret_placeholder)
@@ -162,7 +221,7 @@ class ZenEditor():
 		Returns editor's content
 		@return: str
 		"""
-		return self._editor.getText()
+		return ScintillaStr()
 
 	def get_syntax(self):
 		"""
@@ -215,3 +274,11 @@ class ZenEditor():
 		"""
 		return self._notepad.getCurrentFilename()
 	
+	def add_placeholders(self, text):
+		_ix = [1000]
+		
+		def get_ix(m):
+			_ix[0] += 1
+			return '${%s}' % _ix[0]
+		
+		return re.sub(zencoding.utils.get_caret_placeholder(), get_ix, text)

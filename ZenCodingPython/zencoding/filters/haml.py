@@ -6,9 +6,10 @@ Filter that produces HAML tree
 @author Sergey Chikuyonok (serge.che@gmail.com)
 @link http://chikuyonok.ru
 '''
-from zencoding import zen_core as zen_coding
+import zencoding.utils
 
 child_token = '${child}'
+tabstops = [0]
 	
 def make_attributes_string(tag, profile):
 	"""
@@ -19,7 +20,7 @@ def make_attributes_string(tag, profile):
 	# make attribute string
 	attrs = ''
 	attr_quote = profile['attr_quotes'] == 'single' and "'" or '"'
-	cursor = profile['place_cursor'] and zen_coding.get_caret_placeholder() or ''
+	cursor = profile['place_cursor'] and zencoding.utils.get_caret_placeholder() or ''
 		
 	# use short notation for ID and CLASS attributes
 	for a in tag.attributes:
@@ -71,8 +72,18 @@ def process_snippet(item, profile, level=0):
 	
 	padding = item.parent and item.parent.padding or ''
 		
-	item.start = _replace(item.start, zen_coding.pad_string(start, padding))
-	item.end = _replace(item.end, zen_coding.pad_string(end, padding))
+	item.start = _replace(item.start, zencoding.utils.pad_string(start, padding))
+	item.end = _replace(item.end, zencoding.utils.pad_string(end, padding))
+	
+	# replace variables ID and CLASS
+	def cb(m):
+		if m.group(1) == 'id' or m.group(1) == 'class':
+			return item.get_attribute(m.group(1))
+		else:
+			return m.group(0)
+	
+	item.start = zencoding.utils.replace_variables(item.start, cb)
+	item.end = zencoding.utils.replace_variables(item.end, cb)
 	
 	return item
 
@@ -96,7 +107,7 @@ def process_tag(item, profile, level=0):
 		return item
 	
 	attrs = make_attributes_string(item, profile) 
-	cursor = profile['place_cursor'] and zen_coding.get_caret_placeholder() or ''
+	cursor = profile['place_cursor'] and zencoding.utils.get_caret_placeholder() or ''
 	self_closing = ''
 	is_unary = item.is_unary() and not item.children
 	
@@ -118,6 +129,7 @@ def process_tag(item, profile, level=0):
 	
 	return item
 
+@zencoding.filter('haml')
 def process(tree, profile, level=0):
 	"""
 	Processes simplified tree, making it suitable for output as HTML structure
@@ -127,17 +139,22 @@ def process(tree, profile, level=0):
 	"""
 	if level == 0:
 		# preformat tree
-		tree = zen_coding.run_filters(tree, profile, '_format')
+		tree = zencoding.run_filters(tree, profile, '_format')
+		tabstops[0] = 0
 		
-	for i, item in enumerate(tree.children):
+	for item in tree.children:
 		if item.type == 'tag':
 			process_tag(item, profile, level)
 		else:
 			process_snippet(item, profile, level)
 	
 		# replace counters
-		item.start = zen_coding.unescape_text(zen_coding.replace_counter(item.start, item.counter))
-		item.end = zen_coding.unescape_text(zen_coding.replace_counter(item.end, item.counter))
+		counter = zencoding.utils.get_counter_for_node(item)
+		item.start = zencoding.utils.unescape_text(zencoding.utils.replace_counter(item.start, counter))
+		item.end = zencoding.utils.unescape_text(zencoding.utils.replace_counter(item.end, counter))
+		
+		tabstops[0] += zencoding.utils.upgrade_tabstops(item, tabstops[0]) + 1
+		
 		process(item, profile, level + 1)
 		
 	return tree

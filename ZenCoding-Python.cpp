@@ -7,10 +7,15 @@
 
 #include "stdafx.h"
 #include "AboutDlg.h"
+#include "PluginInterface.h"
+#include "FuncItemManager.h"
 
 #define CHECK_INITIALISED()  if (!g_initialised){ initialise(); }
 
-
+struct SCNotification
+{
+	NMHDR nmhdr;
+};
 
 
 /* Info for Notepad++ */
@@ -35,9 +40,13 @@ int g_fiProfileHtml  = -1;
 int g_fiProfileXml   = -1;
 int g_fiProfilePlain = -1;
 int g_currentProfileIndex = -1;
+tstring g_currentProfile;
 
 /* Dialogs */
 AboutDialog		aboutDlg;
+
+
+FuncItemManager *g_funcItemManager = NULL;
 
 
 // Runs a string in python
@@ -71,7 +80,7 @@ void initialise()
 		mySettingsFile << "my_zen_settings = {\n"
 						  "     'html': {\n"
 						  "      	'abbreviations': {\n"
-						  "			'jq': '<script type=\"text/javascript\" src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js\"></script>',\n"
+						  "			'jq': '<script type=\"text/javascript\" src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js\"></script>',\n"
 						  "			'demo': '<div id   =\"demo\"></div>'\n"
 						  "		}\n"
 						  "   }\n"
@@ -140,6 +149,18 @@ void doPreviousEditPoint()
 	runString(_T("npp_zen_coding.prev_edit_point()"));
 }
 
+void doSelectNextItem()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.select_next_item()"));
+}
+
+void doSelectPreviousItem()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.select_previous_item()"));
+}
+
 void doMatchPairInward()
 {
 	CHECK_INITIALISED();
@@ -156,6 +177,12 @@ void doGoToMatchingPair()
 {
 	CHECK_INITIALISED();
 	runString(_T("npp_zen_coding.go_to_matching_pair()"));
+}
+
+void doMergeLines()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.merge_lines()"));
 }
 
 void doToggleComment()
@@ -176,28 +203,89 @@ void doRemoveTag()
 	runString(_T("npp_zen_coding.remove_tag()"));
 }
 
+
+
+
 void doUpdateImageSize()
 {
 	CHECK_INITIALISED();
 	runString(_T("npp_zen_coding.update_image_size()"));
 }
 
+void doAddEntryAbbreviation()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.add_entry('abbreviations')"));
+}
+
+void doAddEntrySnippet()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.add_entry('snippets')"));
+}
+
+void doEvaluateMathExpression()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.evaluate_math_expression()"));
+}
+
+void doReflectCssValue()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.reflect_css_value()"));
+}
+
+
+void doAutocomplete()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.show_autocomplete()"));
+}
+
+void doAddAbbreviation()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.add_entry('abbreviations')"));
+}
+
+void doAddSnippet()
+{
+	CHECK_INITIALISED();
+	runString(_T("npp_zen_coding.add_entry('snippets')"));
+}
 
 void doAbout()
 {
 	aboutDlg.doDialog();
 }
 
-void doEditSettings()
+
+
+void setProfile(const TCHAR *profileName)
 {
-	g_watchSave = true;
-	
-	
-	::SendMessage(nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, reinterpret_cast<LPARAM>(g_settingsFile));
-	_tcscat_s(g_settingsFile, MAX_PATH, _T("\\ZenCodingPython\\zencoding\\my_zen_settings.py"));
+	int profileIndex = -1;
+	if (_tcscmp(profileName, _T("xhtml")))
+	{
+		profileIndex = g_fiProfileXhtml;
+	}
+	else if (_tcscmp(profileName, _T("xml")))
+	{
+		profileIndex = g_fiProfileXml;
+	}
+	else if (_tcscmp(profileName, _T("html")))
+	{
+		profileIndex = g_fiProfileHtml;
+	}
+	else if (_tcscmp(profileName, _T("plain")))
+	{
+		profileIndex = g_fiProfilePlain;
+	}
 
-	::SendMessage(nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(g_settingsFile));
-
+	if (-1 != profileIndex)
+	{
+		setProfile(profileName, profileIndex);
+	}
 }
 
 void setProfile(const TCHAR *profileName, int cmdIndex)
@@ -219,7 +307,7 @@ void setProfile(const TCHAR *profileName, int cmdIndex)
 
 		runString(cmd);
 	}
-
+	g_currentProfile = profileName;
 	g_currentProfileIndex = cmdIndex;
 }
 
@@ -249,6 +337,8 @@ void doProfilePlain()
 {
 	setProfile(_T("plain"), g_fiProfilePlain);
 }
+
+
 
 
 BOOL APIENTRY DllMain( HMODULE hModule,
@@ -291,132 +381,51 @@ extern "C" __declspec(dllexport) CONST TCHAR * getName()
 
 extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *nbF)
 {
-	*nbF = 20;
-	funcItem = new FuncItem[*nbF];
-	
-	
-	_tcscpy_s<64>(funcItem[0]._itemName, _T("Expand Abbreviation"));
-	funcItem[0]._pFunc = doExpandAbbreviation;
-	funcItem[0]._init2Check = FALSE;
-	funcItem[0]._pShKey = new ShortcutKey();
-	funcItem[0]._pShKey->_key = VK_RETURN;
-	funcItem[0]._pShKey->_isCtrl = true;
-	funcItem[0]._pShKey->_isAlt = true;
-
-	_tcscpy_s<64>(funcItem[1]._itemName, _T("Wrap with abbreviation..."));
-	funcItem[1]._pFunc = doWrapWithAbbreviation;
-	funcItem[1]._init2Check = FALSE;
-	funcItem[1]._pShKey = NULL;
-
-
-	_tcscpy_s<64>(funcItem[2]._itemName, _T("Next Edit Point"));
-	funcItem[2]._pFunc = doNextEditPoint;
-	funcItem[2]._init2Check = FALSE;
-	funcItem[2]._pShKey = new ShortcutKey();
-	funcItem[2]._pShKey->_key = VK_RIGHT;
-	funcItem[2]._pShKey->_isCtrl = true;
-	funcItem[2]._pShKey->_isAlt = true;
-
-	_tcscpy_s<64>(funcItem[3]._itemName, _T("Previous edit point"));
-	funcItem[3]._pFunc = doPreviousEditPoint;
-	funcItem[3]._init2Check = FALSE;
-	funcItem[3]._pShKey = new ShortcutKey();
-	funcItem[3]._pShKey->_key = VK_LEFT;
-	funcItem[3]._pShKey->_isCtrl = true;
-	funcItem[3]._pShKey->_isAlt = true;
-
-
-	
-	_tcscpy_s<64>(funcItem[4]._itemName, _T("Match pair inward"));
-	funcItem[4]._pFunc = doMatchPairInward;
-	funcItem[4]._init2Check = FALSE;
-	funcItem[4]._pShKey = NULL;
-	
-	_tcscpy_s<64>(funcItem[5]._itemName, _T("Match pair outward"));
-	funcItem[5]._pFunc = doMatchPairOutward;
-	funcItem[5]._init2Check = FALSE;
-	funcItem[5]._pShKey = NULL;
-	
-	_tcscpy_s<64>(funcItem[6]._itemName, _T("Go to matching pair"));
-	funcItem[6]._pFunc = doGoToMatchingPair;
-	funcItem[6]._init2Check = FALSE;
-	funcItem[6]._pShKey = NULL;
 	
 
-	_tcscpy_s<64>(funcItem[7]._itemName, _T("Toggle Comment"));
-	funcItem[7]._pFunc = doToggleComment;
-	funcItem[7]._init2Check = FALSE;
-	funcItem[7]._pShKey = NULL;
+
+
+	if (g_funcItemManager != NULL)
+	{
+		delete g_funcItemManager;
+	}
+	g_funcItemManager = new FuncItemManager();
+
+
+	g_funcItemManager->addFunction(_T("Expand abbreviation"), doExpandAbbreviation, VK_RETURN, MODIFIER_CTRL | MODIFIER_ALT, false);
+	g_funcItemManager->addFunction(_T("Wrap with abbreviation"), doWrapWithAbbreviation, VK_RETURN, MODIFIER_CTRL | MODIFIER_ALT | MODIFIER_SHIFT, false);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_funcItemManager->addFunction(_T("Next edit point"), doNextEditPoint, VK_RIGHT, MODIFIER_CTRL | MODIFIER_ALT, false);
+	g_funcItemManager->addFunction(_T("Previous edit point"), doNextEditPoint, VK_LEFT, MODIFIER_CTRL | MODIFIER_ALT, false);
+	g_funcItemManager->addFunction(_T("Select next item"), doSelectNextItem);
+	g_funcItemManager->addFunction(_T("Select previous item"), doSelectPreviousItem);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_funcItemManager->addFunction(_T("Match pair inward"), doMatchPairInward);
+	g_funcItemManager->addFunction(_T("Match pair outward"), doMatchPairOutward);
+	g_funcItemManager->addFunction(_T("Go to matching pair"), doGoToMatchingPair);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_funcItemManager->addFunction(_T("Split / join tag"), doSplitJoinTag);
+	g_funcItemManager->addFunction(_T("Remove tag"), doRemoveTag);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_funcItemManager->addFunction(_T("Toggle comment"), doToggleComment);
+	g_funcItemManager->addFunction(_T("Update image size"), doUpdateImageSize);
+	g_funcItemManager->addFunction(_T("Reflect CSS value"), doReflectCssValue);
+	g_funcItemManager->addFunction(_T("Evalute math expression"), doEvaluateMathExpression);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_funcItemManager->addFunction(_T("Add abbreviation"), doAddAbbreviation);
+	g_funcItemManager->addFunction(_T("Add snippet"), doAddSnippet);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_funcItemManager->addFunction(_T("Autocomplete"), doAutocomplete);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_fiAutoProfile  = g_funcItemManager->addFunction(_T("Auto select profile"), doProfileAutoSelect, NULL, true);
+	g_fiProfileXhtml = g_funcItemManager->addFunction(_T("Profile: xhtml"), doProfileXhtml, NULL, true);
+	g_fiProfileHtml  = g_funcItemManager->addFunction(_T("Profile: html"), doProfileHtml);
+	g_fiProfileXml   = g_funcItemManager->addFunction(_T("Profile: xml"), doProfileXml);
+	g_fiProfilePlain = g_funcItemManager->addFunction(_T("Profile: plain"), doProfilePlain);
+	g_funcItemManager->addSplitter(); // ----------------------
+	g_funcItemManager->addFunction(_T("About"), doAbout);
 	
-	_tcscpy_s<64>(funcItem[8]._itemName, _T("Split / Join tag"));
-	funcItem[8]._pFunc = doSplitJoinTag;
-	funcItem[8]._init2Check = FALSE;
-	funcItem[8]._pShKey = NULL;
-	
-
-	_tcscpy_s<64>(funcItem[9]._itemName, _T("Remove tag"));
-	funcItem[9]._pFunc = doRemoveTag;
-	funcItem[9]._init2Check = FALSE;
-	funcItem[9]._pShKey = NULL;
-	
-
-	_tcscpy_s<64>(funcItem[10]._itemName, _T("Update image size"));
-	funcItem[10]._pFunc = doUpdateImageSize;
-	funcItem[10]._init2Check = FALSE;
-	funcItem[10]._pShKey = NULL;
-
-	_tcscpy_s<64>(funcItem[11]._itemName, _T("--"));
-	funcItem[11]._pFunc = NULL;
-	funcItem[11]._init2Check = FALSE;
-	funcItem[11]._pShKey = NULL;
-
-
-	_tcscpy_s<64>(funcItem[12]._itemName, _T("Edit settings"));
-	funcItem[12]._pFunc = doEditSettings;
-	funcItem[12]._init2Check = FALSE;
-	funcItem[12]._pShKey = NULL;
-	
-	_tcscpy_s<64>(funcItem[13]._itemName, _T("Auto Select Profile"));
-	funcItem[13]._pFunc = doProfileAutoSelect;
-	funcItem[13]._init2Check = TRUE;
-	funcItem[13]._pShKey = NULL;
-	g_fiAutoProfile = 13;
-
-	_tcscpy_s<64>(funcItem[14]._itemName, _T("Profile: xhtml"));
-	funcItem[14]._pFunc = doProfileXhtml;
-	funcItem[14]._init2Check = TRUE;
-	funcItem[14]._pShKey = NULL;
-	g_fiProfileXhtml = 14;
-	g_currentProfileIndex = g_fiProfileXhtml;
-
-	_tcscpy_s<64>(funcItem[15]._itemName, _T("Profile: html"));
-	funcItem[15]._pFunc = doProfileHtml;
-	funcItem[15]._init2Check = FALSE;
-	funcItem[15]._pShKey = NULL;
-	g_fiProfileHtml = 15;
-
-	_tcscpy_s<64>(funcItem[16]._itemName, _T("Profile: xml"));
-	funcItem[16]._pFunc = doProfileXml;
-	funcItem[16]._init2Check = FALSE;
-	funcItem[16]._pShKey = NULL;
-	g_fiProfileXml = 16;
-
-	_tcscpy_s<64>(funcItem[17]._itemName, _T("Profile: plain"));
-	funcItem[17]._pFunc = doProfilePlain;
-	funcItem[17]._init2Check = FALSE;
-	funcItem[17]._pShKey = NULL;
-	g_fiProfilePlain = 17;
-	
-
-	_tcscpy_s<64>(funcItem[18]._itemName, _T("--"));
-	funcItem[18]._pFunc = NULL;
-	funcItem[18]._init2Check = FALSE;
-	funcItem[18]._pShKey = NULL;
-
-	_tcscpy_s<64>(funcItem[19]._itemName, _T("About"));
-	funcItem[19]._pFunc = doAbout;
-	funcItem[19]._init2Check = FALSE;
-	funcItem[19]._pShKey = NULL;
+	funcItem = g_funcItemManager->getFuncItems(nbF);
 	return funcItem;
 }
 
@@ -492,8 +501,18 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *notifyCode)
 	
 }
 
-extern "C" __declspec(dllexport) LRESULT messageProc(UINT message, WPARAM /* wParam */, LPARAM lParam)
+extern "C" __declspec(dllexport) LRESULT messageProc(UINT message, WPARAM wParam , LPARAM lParam)
 {
+	switch(message)
+	{
+	case WM_COMMAND:
+		{
+			TCHAR tmp[20];
+			_itot_s(LOWORD(wParam), tmp, 20, 10);		
+			MessageBox(nppData._nppHandle, tmp, _T("WM_COMMAND"), 0); 
+		}
+
+	}
 	return TRUE;
 }
 
@@ -567,12 +586,20 @@ bool keyIsTab(const ShortcutKey& key)
 void saveSettings()
 {
 	::WritePrivateProfileString(_T("Settings"), _T("AutoProfile"), g_autoSelectProfile ? _T("1") : _T("0"), g_iniPath);
+	::WritePrivateProfileString(_T("Settings"), _T("CurrentProfile"), g_currentProfile.c_str(), g_iniPath);
 }
 
 void loadSettings()
 {
 	int result = ::GetPrivateProfileInt(_T("Settings"), _T("AutoProfile"), 1, g_iniPath);
 	g_autoSelectProfile = (result == 1);
-
+	if (!g_autoSelectProfile)
+	{
+		TCHAR tmp[20];
+		::GetPrivateProfileString(_T("Settings"), _T("CurrentProfile"), _T("xhtml"), tmp, 20, g_iniPath);
+		g_currentProfile = tmp;
+		setProfile(g_currentProfile.c_str());
+	}
 	::SendMessage(nppData._nppHandle, NPPM_SETMENUITEMCHECK, funcItem[g_fiAutoProfile]._cmdID, g_autoSelectProfile ? TRUE : FALSE);
+
 }

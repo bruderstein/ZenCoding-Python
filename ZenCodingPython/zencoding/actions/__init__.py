@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os.path
-import sys
-
-# import all filters
+# import all actions
+import os
 __sub_modules = []
 
 for file in os.listdir(os.path.dirname(__file__)):

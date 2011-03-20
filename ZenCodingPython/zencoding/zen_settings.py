@@ -14,7 +14,11 @@ zen_settings = {
 		'profile': 'xhtml',
 		
 #		Inner element indentation
-		'indentation': '\t'
+		'indentation': '\t',
+		
+		# newline variables, useful for wrapping
+		'newline': '\n',
+		'nl': '\n'
 	},
 	
 	# common settings are used for quick injection of user-defined snippets
@@ -24,6 +28,7 @@ zen_settings = {
 	
 	'css': {
 		'extends': 'common',
+		'filters': 'html,css',
 		'snippets': {
 			"@i": "@import url(|);",
 			"@m": "@media print {\n\t|\n}",
@@ -252,7 +257,7 @@ zen_settings = {
 			"bg": "background:|;",
 			"bg+": "background:#FFF url(|) 0 0 no-repeat;",
 			"bg:n": "background:none;",
-			"bg:ie": "filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='|x.png');",
+			"bg:ie": "filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='${1:x}.png',sizingMethod='${2:crop}');",
 			"bgc": "background-color:#FFF;",
 			"bgi": "background-image:url(|);",
 			"bgi:n": "background-image:none;",
@@ -696,12 +701,20 @@ zen_settings = {
 		}
 	},
 	
+	'xml': {
+		'extends': 'html',
+		'filters': 'html'
+	},
+	
 	'xsl': {
 		'extends': 'common,html',
 		'filters': 'html, xsl',
 		'abbreviations': {
-			'tm': '<xsl:template match="" mode=""></xsl:template>',
-			'tmatch': 'tm',
+		    'xsl' : '<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"></xsl:stylesheet>',
+		    'xsl2' : '<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0"></xsl:stylesheet>',		
+			'tm': '<xsl:template match=""></xsl:template>',
+			'tmm': '<xsl:template match="" mode=""></xsl:template>',
+			'tmatch': 'tmm',
 			'tn': '<xsl:template name=""></xsl:template>',
 			'tname': 'tn',
 			'xsl:when': '<xsl:when test=""></xsl:when>',
@@ -722,14 +735,13 @@ zen_settings = {
 			'choose+': 'xsl:choose>xsl:when+xsl:otherwise'
 		}
 	},
-	
-	'xsd': {
-		'filters' : 'xsd',
+	'xsd' : {
+		'filters' : 'html, xsd',
 		'abbreviations': {
 		   'ct' : '<xs:complexType></xs:complexType>',
 		   'st' : '<xs:simpleType></xs:simpleType>',
 		   'seq' : '<xs:sequence></xs:sequence>',
-		   'el'  : '<xs:element></xs:element>',
+		   'el'  : '<xs:element />',
 		   'at'  : '<xs:attribute name="" type=""/>',
 		   'any' : '<xs:any />',
 		   'anyat' : '<xs:anyAttribute />',
@@ -747,6 +759,7 @@ zen_settings = {
 		   'doc+' : 'xs:annotation>xs:documentation',
 		   }
 	},
+	
 	'haml': {
 		'filters': 'haml',
 		'extends': 'html'

@@ -11,20 +11,17 @@ of abbreviation.
 @link http://chikuyonok.ru
 """
 import re
-from zencoding import zen_core as zen_coding
-
-alias = '_format'
-"Filter name alias (if not defined, ZC will use module name)"
+import zencoding.utils
 
 child_token = '${child}'
 placeholder = '%s'
 
 def get_newline():
-	return zen_coding.get_newline()
+	return zencoding.utils.get_newline()
 
 
 def get_indentation():
-	return zen_coding.get_indentation()
+	return zencoding.utils.get_indentation()
 
 def has_block_sibling(item):
 	"""
@@ -105,7 +102,7 @@ def process_snippet(item, profile, level=0):
 	
 	# adjust item formatting according to last line of <code>start</code> property
 	parts = data.split(child_token)
-	lines = zen_coding.split_by_lines(parts[0] or '')
+	lines = zencoding.utils.split_by_lines(parts[0] or '')
 	padding_delta = get_indentation()
 		
 	if len(lines) > 1:
@@ -154,11 +151,14 @@ def process_tag(item, profile, level=0):
 			
 		elif item.is_inline() and has_block_sibling(item) and not is_very_first_child(item):
 			item.start = get_newline() + padding + item.start
+		elif item.is_inline() and item.has_block_children():
+			item.end = get_newline() + padding + item.end
 		
 		item.padding = padding + get_indentation()
 	
 	return item
 
+@zencoding.filter('_format')
 def process(tree, profile, level=0):
 	"""
 	Processes simplified tree, making it suitable for output as HTML structure
@@ -175,7 +175,7 @@ def process(tree, profile, level=0):
 			item = process_snippet(item, profile, level)
 		
 		if item.content:
-			item.content = zen_coding.pad_string(item.content, item.padding)
+			item.content = zencoding.utils.pad_string(item.content, item.padding)
 			
 		process(item, profile, level + 1)
 	

@@ -30,16 +30,18 @@ def locate_file(editor_file, file_name):
 	@type file_name: str
 	@return String or None if <code>file_name</code> cannot be located
 	"""
-	result = ''
+	result = None
 	
+	previous_parent = ''
 	parent = os.path.dirname(editor_file)
-	while parent and os.path.exists(parent):
+	while parent and os.path.exists(parent) and parent != previous_parent:
 		tmp = create_path(parent, file_name)
 		if os.path.exists(tmp):
 			result = tmp
 			break
 		
-		parent = os.path.dirname(editor_file)
+		previous_parent = parent
+		parent = os.path.dirname(parent)
 	
 	return result
 
@@ -53,6 +55,7 @@ def create_path(parent, file_name):
 	@return: str
 	"""
 	result = ''
+	file_name = file_name.lstrip('/')
 	
 	if os.path.exists(parent):
 		if os.path.isfile(parent):

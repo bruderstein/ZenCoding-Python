@@ -21,5 +21,6 @@
 #include <keys.h>
 #include <string>
 #include <fstream>
+#include <list>
 
 typedef std::basic_string<TCHAR> tstring;
