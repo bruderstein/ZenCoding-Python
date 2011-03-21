@@ -65,7 +65,14 @@ class ScintillaStr():
 		
 	def __len__(self):
 		return self._editor.getLength()
-		
+	
+	def find(self, search, start=0):
+		found = self._editor.findText(0, start, self._editor.getLength(), search)
+		if found:
+			return found[0]
+		else:
+			return -1
+			
 class ZenEditor():
 	def __init__(self):
 

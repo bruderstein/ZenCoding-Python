@@ -396,7 +396,7 @@ extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *nbF)
 	g_funcItemManager->addFunction(_T("Wrap with abbreviation"), doWrapWithAbbreviation, VK_RETURN, MODIFIER_CTRL | MODIFIER_ALT | MODIFIER_SHIFT, false);
 	g_funcItemManager->addSplitter(); // ----------------------
 	g_funcItemManager->addFunction(_T("Next edit point"), doNextEditPoint, VK_RIGHT, MODIFIER_CTRL | MODIFIER_ALT, false);
-	g_funcItemManager->addFunction(_T("Previous edit point"), doNextEditPoint, VK_LEFT, MODIFIER_CTRL | MODIFIER_ALT, false);
+	g_funcItemManager->addFunction(_T("Previous edit point"), doPreviousEditPoint, VK_LEFT, MODIFIER_CTRL | MODIFIER_ALT, false);
 	g_funcItemManager->addFunction(_T("Select next item"), doSelectNextItem);
 	g_funcItemManager->addFunction(_T("Select previous item"), doSelectPreviousItem);
 	g_funcItemManager->addSplitter(); // ----------------------

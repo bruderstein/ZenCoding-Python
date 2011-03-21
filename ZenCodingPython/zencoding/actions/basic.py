@@ -232,25 +232,44 @@ def find_new_edit_point(editor, inc=1, offset=0):
 		
 		#return content[start:ix]
 	
-	cur_char = editor.char_at(cur_point - 1)
-	next_char = editor.char_at(cur_point)
+	# Notepad++ change:
+	cur_char = ['']
+	next_char = ['']
+	prev_char = ['']
+	def next_chars_backwards(pt):
+		next_char[0] = cur_char[0]
+		cur_char[0] = prev_char[0]
+		prev_char[0] = editor.char_at(pt - 1)
+		
+	def next_chars_forwards(pt):
+		prev_char[0] = cur_char[0]
+		cur_char[0] = next_char[0]
+		next_char[0] = editor.char_at(pt + 1)
+	
+	if inc == -1:    # Search backwards
+		next_chars = next_chars_backwards
+		cur_char[0] = editor.char_at(cur_point + 1)
+		prev_char[0] = editor.char_at(cur_point)
+		
+	else:            # Search forwards
+		next_chars = next_chars_forwards
+		cur_char[0]= editor.char_at(cur_point - 1)
+		next_char[0] = editor.char_at(cur_point)
+		
 	
 		
 	while cur_point < max_len and cur_point > 0:
 		cur_point += inc
-		prev_char = cur_char
-		cur_char = next_char
-		next_char = editor.char_at(cur_point + 1)
+		next_chars(cur_point)
 		
-		
-		if cur_char in '"\'':
-			if next_char == cur_char and prev_char == '=':
+		if cur_char[0] in '"\'':
+			if next_char[0] == cur_char[0] and prev_char[0] == '=':
 				# empty attribute
 				next_point = cur_point + 1
-		elif cur_char == '>' and next_char == '<':
+		elif cur_char[0] == '>' and next_char[0] == '<':
 			# between tags
 			next_point = cur_point + 1
-		elif cur_char in '\r\n':
+		elif cur_char[0] in '\r\n':
 			# empty line
 			if re.search(re_empty_line, get_line(cur_point - 1)):
 				next_point = cur_point
