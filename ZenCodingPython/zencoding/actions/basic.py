@@ -259,19 +259,19 @@ def find_new_edit_point(editor, inc=1, offset=0):
 	
 		
 	while cur_point < max_len and cur_point > 0:
-		cur_point += inc
 		next_chars(cur_point)
+		cur_point += inc
 		
 		if cur_char[0] in '"\'':
 			if next_char[0] == cur_char[0] and prev_char[0] == '=':
 				# empty attribute
-				next_point = cur_point + 1
+				next_point = cur_point + 1 - inc
 		elif cur_char[0] == '>' and next_char[0] == '<':
 			# between tags
-			next_point = cur_point + 1
+			next_point = cur_point + 1 - inc
 		elif cur_char[0] in '\r\n':
 			# empty line
-			if re.search(re_empty_line, get_line(cur_point - 1)):
+			if re.search(re_empty_line, get_line(cur_point)):
 				next_point = cur_point
 		
 		if next_point != -1: break

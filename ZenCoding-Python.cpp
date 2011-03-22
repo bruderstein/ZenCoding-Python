@@ -503,16 +503,6 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *notifyCode)
 
 extern "C" __declspec(dllexport) LRESULT messageProc(UINT message, WPARAM wParam , LPARAM lParam)
 {
-	switch(message)
-	{
-	case WM_COMMAND:
-		{
-			TCHAR tmp[20];
-			_itot_s(LOWORD(wParam), tmp, 20, 10);		
-			MessageBox(nppData._nppHandle, tmp, _T("WM_COMMAND"), 0); 
-		}
-
-	}
 	return TRUE;
 }
 
