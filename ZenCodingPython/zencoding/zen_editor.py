@@ -49,7 +49,8 @@ class ScintillaStr():
 				stop = -1
 			return self._editor.getTextRange(i.start, stop)
 		else:
-			return chr(self._editor.getCharAt(i))
+			ch = self._editor.getCharAt(i)
+			return ch >= 0 and chr(ch) or chr(ch + 256)
 		
 	def __setitem__(self, i, c):
 		if i.__class__.__name__ == 'slice':
@@ -144,7 +145,8 @@ class ZenEditor():
 		return self._editor.getLine(self._editor.lineFromPosition(index))
 		
 	def char_at(self, index):
-		return chr(self._editor.getCharAt(index));
+		ch = self._editor.getCharAt(index)
+		return ch >= 0 and chr(ch) or chr(ch + 256)
 		
 	def get_caret_pos(self):
 		""" Returns current caret position """
